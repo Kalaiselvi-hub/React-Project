@@ -1,30 +1,29 @@
-import React from 'react';
 import { HospitalProvider, useHospital } from './context/HospitalContext';
-import { Sidebar } from './components/Sidebar';
-import { Header } from './components/Header';
-import { Toast } from './components/Toast';
+import { Sidebar } from './Components/Sidebar';
+import { Header } from './Components/Header';
+import { Toast } from './Components/Toast';
 
 // Views
-import { DashboardView } from './components/views/DashboardView';
-import { PatientsView } from './components/views/PatientsView';
-import { DoctorsView } from './components/views/DoctorsView';
-import { AppointmentsView } from './components/views/AppointmentsView';
-import { ServicesView } from './components/views/ServicesView';
-import { StaffManagementView } from './components/views/StaffManagementView';
-import { BillingFinanceView } from './components/views/BillingFinanceView';
-import { ReportsAnalyticsView } from './components/views/ReportsAnalyticsView';
-import { InventoryView } from './components/views/InventoryView';
-import { UserSettingsView } from './components/views/UserSettingsView';
+import { DashboardView } from './Components/views/DashboardView';
+import { PatientsView } from './Components/views/PatientsView';
+import { DoctorsView } from './Components/views/DoctorsView';
+import { AppointmentsView } from './Components/views/AppointmentsView';
+import { ServicesView } from './Components/views/ServicesView';
+import { StaffManagementView } from './Components/views/StaffManagementView';
+import { BillingFinanceView } from './Components/views/BillingFinanceView';
+import { ReportsAnalyticsView } from './Components/views/ReportsAnalyticsView';
+import { InventoryView } from './Components/views/InventoryView';
+import { UserSettingsView } from './Components/views/UserSettingsView';
 
 // Modals
-import { AddPatientModal } from './components/modals/AddPatientModal';
-import { PatientRecordsModal } from './components/modals/PatientRecordsModal';
-import { AddDoctorModal } from './components/modals/AddDoctorModal';
-import { BookAppointmentModal } from './components/modals/BookAppointmentModal';
-import { CreateBillModal } from './components/modals/CreateBillModal';
-import { InvoiceDetailModal } from './components/modals/InvoiceDetailModal';
-import { AddStaffModal } from './components/modals/AddStaffModal';
-import { AdjustStockModal } from './components/modals/AdjustStockModal';
+import { AddPatientModal } from './Components/modals/AddPatientModal';
+import { PatientRecordsModal } from './Components/modals/PatientRecordsModal';
+import { AddDoctorModal } from './Components/modals/AddDoctorModal';
+import { BookAppointmentModal } from './Components/modals/BookAppointmentModal';
+import { CreateBillModal } from './Components/modals/CreateBillModal';
+import { InvoiceDetailModal } from './Components/modals/InvoiceDetailModal';
+import { AddStaffModal } from './Components/modals/AddStaffModal';
+import { AdjustStockModal } from './Components/modals/AdjustStockModal';
 
 const MainLayout = () => {
   const { activeMenu } = useHospital();
