@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Search,
   Bell,
@@ -10,7 +10,8 @@ import {
   UserPlus,
   CalendarPlus,
   Receipt,
-  X
+  X,
+  LogOut
 } from 'lucide-react';
 import { useHospital } from '../context/HospitalContext';
 
@@ -24,6 +25,7 @@ export const Header = () => {
     bills,
     userProfile,
     setActiveMenu,
+    navigateTo,
     setSelectedPatient,
     setIsPatientModalOpen,
     setIsAddPatientModalOpen,
@@ -35,6 +37,37 @@ export const Header = () => {
   const [currentDate, setCurrentDate] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const profileDropdownRef = useRef(null);
+
+  // Close profile dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(e.target)) {
+        setShowProfileDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleLogoutConfirm = () => {
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+      localStorage.removeItem('auth');
+      localStorage.removeItem('isLoggedIn');
+      localStorage.removeItem('loginData');
+      localStorage.removeItem('admin');
+    } catch (err) {
+      console.error('Error clearing storage:', err);
+    }
+    setShowLogoutConfirm(false);
+    window.location.href = '/login';
+  };
 
   useEffect(() => {
     const updateTime = () => {
@@ -254,26 +287,110 @@ export const Header = () => {
           )}
         </div>
 
-        {/* User Profile Pill */}
-        <div
-          className="header-profile-pill"
-          onClick={() => setActiveMenu('settings')}
-          title="Click to view profile & settings"
-        >
-          <img
-            src={userProfile.avatar}
-            alt={userProfile.name}
-            className="profile-avatar"
-          />
-          <div className="profile-info-text">
-            <div className="profile-name-row">
-              <span className="profile-name">{userProfile.name}</span>
-              <span className="online-indicator"></span>
+        {/* User Profile Pill & Dropdown */}
+        <div className="header-profile-wrapper" ref={profileDropdownRef}>
+          <div
+            className="header-profile-pill"
+            onClick={() => setShowProfileDropdown((prev) => !prev)}
+            title="Admin Profile"
+          >
+            <img
+              src={userProfile.avatar}
+              alt={userProfile.name}
+              className="profile-avatar"
+            />
+            <div className="profile-info-text">
+              <div className="profile-name-row">
+                <span className="profile-name">{userProfile.name}</span>
+                <span className="online-indicator"></span>
+              </div>
+              <span className="profile-role">{userProfile.role}</span>
             </div>
-            <span className="profile-role">{userProfile.role}</span>
           </div>
+
+          {/* Profile Dropdown Menu */}
+          {showProfileDropdown && (
+            <div className="profile-dropdown-menu">
+              <button
+                type="button"
+                className="profile-dropdown-item"
+                onClick={() => {
+                  setShowProfileDropdown(false);
+                  if (navigateTo) {
+                    navigateTo('settings', 'profile');
+                  } else {
+                    setActiveMenu('settings');
+                  }
+                }}
+              >
+                <User size={16} />
+                <span>My Profile</span>
+              </button>
+
+              <button
+                type="button"
+                className="profile-dropdown-item logout-item"
+                onClick={() => {
+                  setShowProfileDropdown(false);
+                  setShowLogoutConfirm(true);
+                }}
+              >
+                <LogOut size={16} />
+                <span>Logout</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Logout Confirmation Popup */}
+      {showLogoutConfirm && (
+        <div
+          className="modal-backdrop"
+          onClick={() => setShowLogoutConfirm(false)}
+        >
+          <div
+            className="modal-box modal-logout-confirm animate-scaleIn"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <div className="modal-title-wrap">
+                <LogOut size={20} className="logout-icon-danger" />
+                <h3 className="modal-title">Confirm Logout</h3>
+              </div>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setShowLogoutConfirm(false)}
+                aria-label="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+            <div className="modal-body logout-modal-body">
+              <p className="logout-confirm-text">
+                Are you sure you want to logout?
+              </p>
+            </div>
+            <div className="modal-footer logout-modal-footer">
+              <button
+                type="button"
+                className="btn btn-outline-secondary logout-cancel-btn"
+                onClick={() => setShowLogoutConfirm(false)}
+              >
+                No
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger logout-confirm-btn"
+                onClick={handleLogoutConfirm}
+              >
+                Yes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 };
