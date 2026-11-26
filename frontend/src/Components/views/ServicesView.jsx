@@ -152,7 +152,144 @@ export const ServicesView = () => {
         </div>
       )}
 
-      {/* Tab 2: Hospital Facilities */}
+      {/* Tab 2: Treatments & Procedures / Add New Service */}
+      {servicesSubTab === 'treatments' && (
+        <div className="space-y-4">
+          <div className="content-card max-w-4xl mx-auto p-4 mb-4">
+            <div className="card-header-bar mb-3">
+              <div className="card-header-title">
+                <Plus size={20} className="text-teal" />
+                <div>
+                  <h3>Add New Hospital Service / Procedure</h3>
+                  <p className="card-subtext">Register a new clinical procedure or diagnostic test in the hospital system</p>
+                </div>
+              </div>
+            </div>
+
+            <form onSubmit={handleCreateService} className="form-grid">
+              <div className="form-group col-span-2">
+                <label>Service / Procedure Name *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. 24-Hour Ambulatory Blood Pressure Monitoring"
+                  value={newServiceForm.name}
+                  onChange={(e) => setNewServiceForm({ ...newServiceForm, name: e.target.value })}
+                  className="form-control"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Department Category *</label>
+                <select
+                  value={newServiceForm.category}
+                  onChange={(e) => setNewServiceForm({ ...newServiceForm, category: e.target.value })}
+                  className="form-control"
+                >
+                  <option value="Cardiology">Cardiology</option>
+                  <option value="Orthopedics">Orthopedics</option>
+                  <option value="Pediatrics">Pediatrics</option>
+                  <option value="Obstetrics">Obstetrics</option>
+                  <option value="Radiology">Radiology</option>
+                  <option value="Surgical">Surgical</option>
+                  <option value="Laboratory">Laboratory</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Standard Duration</label>
+                <input
+                  type="text"
+                  placeholder="e.g. 60 mins"
+                  value={newServiceForm.duration}
+                  onChange={(e) => setNewServiceForm({ ...newServiceForm, duration: e.target.value })}
+                  className="form-control"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Clinical Preparation Instructions</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Fasting 6 hours prior"
+                  value={newServiceForm.prep}
+                  onChange={(e) => setNewServiceForm({ ...newServiceForm, prep: e.target.value })}
+                  className="form-control"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Standard Tariff in ₦ *</label>
+                <input
+                  type="number"
+                  required
+                  min="0"
+                  step="1000"
+                  placeholder="45000"
+                  value={newServiceForm.standardRate}
+                  onChange={(e) => setNewServiceForm({ ...newServiceForm, standardRate: parseInt(e.target.value, 10) || 0 })}
+                  className="form-control"
+                />
+              </div>
+
+              <div className="col-span-2 flex justify-end gap-3 mt-3">
+                <button type="submit" className="btn btn-teal-primary">
+                  Save New Service
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div className="content-card">
+            <div className="card-header-bar">
+              <div className="card-header-title">
+                <Syringe size={18} className="text-teal" />
+                <div>
+                  <h3>Existing Treatments & Surgical Procedures</h3>
+                  <p className="card-subtext">Clinical duration, pre-operative protocols, and tariff rates</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="table-responsive">
+              <table className="naira-table">
+                <thead>
+                  <tr>
+                    <th>Code</th>
+                    <th>Procedure Name</th>
+                    <th>Department / Category</th>
+                    <th>Average Duration</th>
+                    <th>Pre-Op / Clinical Prep</th>
+                    <th className="text-right">Standard Tariff (₦)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {treatments.map((t) => (
+                    <tr key={t.id}>
+                      <td className="font-mono text-teal font-bold">{t.id}</td>
+                      <td>
+                        <strong>{t.name}</strong>
+                      </td>
+                      <td>
+                        <span className="badge badge-dept">{t.category}</span>
+                      </td>
+                      <td className="font-mono text-sm">
+                        <Clock size={13} className="inline mr-1 text-teal" /> {t.duration}
+                      </td>
+                      <td className="text-sm text-muted">{t.prep}</td>
+                      <td className="text-right font-mono font-bold text-navy">
+                        ₦{t.standardRate.toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab 3: Hospital Facilities */}
       {servicesSubTab === 'facilities' && (
         <div className="facilities-grid">
           {facilities.map((fac, idx) => (
@@ -185,7 +322,7 @@ export const ServicesView = () => {
         </div>
       )}
 
-      {/* Tab 3: Treatment Charges (Service Categories) */}
+      {/* Tab 4: Treatment Charges (Service Categories) */}
       {servicesSubTab === 'charges' && (
         <div className="content-card">
           <div className="card-header-bar">

@@ -30,7 +30,8 @@ export const Header = () => {
     setIsPatientModalOpen,
     setIsAddPatientModalOpen,
     setIsBookAppointmentModalOpen,
-    setIsCreateBillModalOpen
+    setIsCreateBillModalOpen,
+    logout
   } = useHospital();
 
   const [currentTime, setCurrentTime] = useState('');
@@ -53,20 +54,8 @@ export const Header = () => {
   }, []);
 
   const handleLogoutConfirm = () => {
-    try {
-      localStorage.clear();
-      sessionStorage.clear();
-      localStorage.removeItem('user');
-      localStorage.removeItem('token');
-      localStorage.removeItem('auth');
-      localStorage.removeItem('isLoggedIn');
-      localStorage.removeItem('loginData');
-      localStorage.removeItem('admin');
-    } catch (err) {
-      console.error('Error clearing storage:', err);
-    }
     setShowLogoutConfirm(false);
-    window.location.href = '/login';
+    logout();
   };
 
   useEffect(() => {

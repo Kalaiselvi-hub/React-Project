@@ -2,6 +2,7 @@ import { HospitalProvider, useHospital } from './context/HospitalContext';
 import { Sidebar } from './Components/Sidebar';
 import { Header } from './Components/Header';
 import { Toast } from './Components/Toast';
+import { LoginScreen } from './Components/LoginScreen';
 
 // Views
 import { DashboardView } from './Components/views/DashboardView';
@@ -26,7 +27,16 @@ import { AddStaffModal } from './Components/modals/AddStaffModal';
 import { AdjustStockModal } from './Components/modals/AdjustStockModal';
 
 const MainLayout = () => {
-  const { activeMenu } = useHospital();
+  const { activeMenu, isAuthenticated, isDemoMode } = useHospital();
+
+  if (!isAuthenticated && !isDemoMode) {
+    return (
+      <>
+        <LoginScreen />
+        <Toast />
+      </>
+    );
+  }
 
   const renderActiveView = () => {
     switch (activeMenu) {

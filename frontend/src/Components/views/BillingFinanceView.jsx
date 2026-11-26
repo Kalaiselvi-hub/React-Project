@@ -51,6 +51,106 @@ export const BillingFinanceView = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
 
+  // Inline "New Bill" Form State
+  const [inlinePatientName, setInlinePatientName] = useState('');
+  const [inlineMethod, setInlineMethod] = useState('POS Card Payment');
+  const [inlineIsPaid, setInlineIsPaid] = useState(true);
+  const [inlineItems, setInlineItems] = useState([
+    { name: 'Specialist Consultant Consultation', qty: 1, rate: 25000 },
+    { name: 'Complete Blood Count (FBC + Diff)', qty: 1, rate: 8500 }
+  ]);
+
+  const handleAddItem = () => {
+    setInlineItems([...inlineItems, { name: 'General Doctor Consultation', qty: 1, rate: 10000 }]);
+  };
+
+  const handleRemoveItem = (idx) => {
+    setInlineItems(inlineItems.filter((_, i) => i !== idx));
+  };
+
+  const handleItemChange = (idx, field, val) => {
+    const updated = [...inlineItems];
+    if (field === 'service') {
+      const selected = charges.find((c) => c.service === val);
+      updated[idx].name = val;
+      if (selected) updated[idx].rate = selected.fee;
+    } else if (field === 'qty') {
+      updated[idx].qty = Math.max(1, parseInt(val, 10) || 1);
+    } else if (field === 'rate') {
+      updated[idx].rate = Math.max(0, parseInt(val, 10) || 0);
+    }
+    setInlineItems(updated);
+  };
+
+  const subtotal = inlineItems.reduce((sum, item) => sum + item.qty * item.rate, 0);
+  const vat = Math.round(subtotal * 0.075);
+  const grandTotal = subtotal + vat;
+
+  const handleInlineBillSubmit = (e) => {
+    e.preventDefault();
+    createBill({
+      patientName: inlinePatientName || 'Walk-in Patient',
+      patientId: 'PAT-1001',
+      items: inlineItems,
+      method: inlineMethod,
+      isPaidDirectly: inlineIsPaid
+    });
+    setInlinePatientName('');
+    navigateTo('billing', 'overview');
+  };
+
+  const totalBilled = 4285000;
+  const totalCollected = 3820000;
+  const totalPending = 465000;
+  const totalRefunds = 35000;
+  const dailyCollection = 342500;
+
+  const handleOpenInvoice = (bill) => {
+    setSelectedInvoice(bill);
+    setIsInvoiceModalOpen(true);
+  };
+
+  const filteredBills = bills.filter((b) => {
+    const matchesSearch =
+      b.invoiceNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      b.patientName.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus =
+      statusFilter === 'All' ? true : b.status.toLowerCase() === statusFilter.toLowerCase();
+    return matchesSearch && matchesStatus;
+  });
+
+  const pendingBills = bills.filter((b) => b.due > 0);
+
+  return (
+    <div className="view-container billing-view">
+      {/* Header */}
+      <div className="view-header">
+        <div>
+          <h2 className="view-title">
+            {billingSubTab === 'overview' && 'Invoices & Patient Accounts'}
+            {billingSubTab === 'createBill' && 'Generate New Hospital Bill'}
+            {billingSubTab === 'payments' && 'Payment & POS Transaction Records'}
+            {billingSubTab === 'pending' && 'Insurance & Outstanding Due Balances'}
+            {billingSubTab === 'refunds' && 'Revenue Reports & Financial Ledger'}
+          </h2>
+          <p className="view-description">
+            {billingSubTab === 'overview' && 'Itemized billing records, insurance co-payments, and settlements in Nigerian Naira (₦)'}
+            {billingSubTab === 'createBill' && 'Create patient invoice with dynamic clinical line items, automatic VAT (7.5%), and payment gateway'}
+            {billingSubTab === 'payments' && 'Verified inflows through Stanbic/Zenith POS terminals, GTBank NIP, and cash desk'}
+            {billingSubTab === 'pending' && 'Outstanding debts under HMO reconciliation with automated reminder notifications'}
+            {billingSubTab === 'refunds' && 'Disbursed patient procedure refunds and real-time daily collection summaries'}
+          </p>
+        </div>
+        <div className="view-actions">
+          <button
+            className="btn btn-teal-primary"
+            onClick={() => setIsCreateBillModalOpen(true)}
+          >
+            <Plus size={16} /> New Bill
+          </button>
+        </div>
+      </div>
+
       {/* Primary Financial KPI Ribbon */}
       <div className="stats-grid-4 mb-4">
         <div className="stat-card">
