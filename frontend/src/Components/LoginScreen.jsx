@@ -30,18 +30,12 @@ export const LoginScreen = () => {
   };
 
   return (
-    <div
-      className="min-vh-100 d-flex align-items-center justify-content-center p-3"
-      style={{
-        background: 'linear-gradient(135deg, #0b1b3a 0%, #102c57 50%, #0e86d4 100%)',
-      }}
-    >
-      <div className="card border-0 shadow-lg rounded-4 overflow-hidden" style={{ maxWidth: 440, width: '100%' }}>
-        <div className="card-body p-4 p-md-5">
-          <div className="text-center mb-4">
+    <div className="login-screen">
+      <div className="login-card">
+        <div className="login-card-body">
+          <div className="login-heading">
             <div
-              className="d-inline-flex align-items-center justify-content-center rounded-circle mb-3"
-              style={{ width: 56, height: 56, background: 'rgba(14, 134, 212, 0.12)', color: '#0e86d4' }}
+              className="login-logo"
             >
               <Activity size={28} />
             </div>
