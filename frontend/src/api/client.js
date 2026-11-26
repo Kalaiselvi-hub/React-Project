@@ -1,4 +1,4 @@
-const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace(/\/+$/, '');
+const API_BASE_URL = (import.meta.env.VITE_API_URL || '  https://demo-backend-tx4b.onrender.com/api').replace(/\/+$/, '');
 const TOKEN_STORAGE_KEY = 'naira_auth_token';
 
 export const getAuthToken = () => localStorage.getItem(TOKEN_STORAGE_KEY);

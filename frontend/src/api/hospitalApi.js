@@ -1,7 +1,7 @@
 import { apiRequest } from './client';
 
 export const authApi = {
-  login: (credentials) => apiRequest('/auth/login', { method: 'POST', body: credentials, skipAuth: true }),
+  login: (credentials) => apiRequest('/auth/login', { method: 'POST', body: { emailAddress: credentials.email || credentials.emailAddress, password: credentials.password } }),
   logout: () => apiRequest('/auth/logout', { method: 'POST' }),
   getMe: () => apiRequest('/auth/me'),
   changePassword: (data) => apiRequest('/auth/change-password', { method: 'POST', body: data }),
