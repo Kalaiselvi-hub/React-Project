@@ -18,11 +18,6 @@ import {
 import { useHospital } from '../../context/HospitalContext';
 import { PieChartWidget } from '../charts/PieChartWidget';
 import { BarChartWidget } from '../charts/BarChartWidget';
-import {
-  patientsByDepartmentData,
-  newPatientsMonthlyData,
-  dailyAdmissionsData
-} from '../../data/mockData';
 
 export const PatientsView = () => {
   const {
@@ -97,6 +92,39 @@ export const PatientsView = () => {
   });
 
   const dischargedPatients = patients.filter((p) => p.status === 'Discharged');
+
+  // Dynamic chart datasets derived from real API patients
+  const chartColors = ['#00C2FF', '#0E86D4', '#1E3A8A', '#38BDF8', '#0077B6'];
+  const deptCounts = patients.reduce((acc, p) => {
+    const dept = p.department || 'General Medicine';
+    acc[dept] = (acc[dept] || 0) + 1;
+    return acc;
+  }, {});
+  const totalPts = patients.length || 1;
+  const patientsByDepartmentData = Object.entries(deptCounts).map(([label, count], idx) => ({
+    label,
+    count,
+    percent: Math.round((count / totalPts) * 100),
+    color: chartColors[idx % chartColors.length],
+  }));
+
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const newPatientsMonthlyData = monthNames.slice(0, 7).map((label, idx) => ({
+    label,
+    value: patients.filter((p) => {
+      const d = new Date(p.admissionDate);
+      return !isNaN(d) && d.getMonth() === idx;
+    }).length,
+  }));
+
+  const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const dailyAdmissionsData = dayNames.map((label, idx) => ({
+    label,
+    value: patients.filter((p) => {
+      const d = new Date(p.admissionDate);
+      return !isNaN(d) && ((d.getDay() + 6) % 7) === idx;
+    }).length,
+  }));
 
   return (
     <div className="view-container patients-view">

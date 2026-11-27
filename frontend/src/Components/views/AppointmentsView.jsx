@@ -18,11 +18,6 @@ import {
 import { useHospital } from '../../context/HospitalContext';
 import { PieChartWidget } from '../charts/PieChartWidget';
 import { BarChartWidget } from '../charts/BarChartWidget';
-import {
-  appointmentStatusPieData,
-  appointmentsPerDayData,
-  appointmentsPerWeekData
-} from '../../data/mockData';
 
 export const AppointmentsView = () => {
   const {
@@ -90,6 +85,34 @@ export const AppointmentsView = () => {
         : apt.status.toLowerCase() === effectiveFilter.toLowerCase();
 
     return matchesSearch && matchesFilter;
+  });
+
+  // Dynamic chart datasets derived from real API appointments
+  const totalApts = appointments.length || 1;
+  const completedCount = appointments.filter((a) => a.status === 'Completed').length;
+  const pendingCount = appointments.filter((a) => a.status === 'Pending').length;
+  const cancelledCount = appointments.filter((a) => a.status === 'Cancelled').length;
+  const appointmentStatusPieData = [
+    { label: 'Completed', count: completedCount, percent: Math.round((completedCount / totalApts) * 100), color: '#10B981' },
+    { label: 'Pending', count: pendingCount, percent: Math.round((pendingCount / totalApts) * 100), color: '#F59E0B' },
+    { label: 'Cancelled', count: cancelledCount, percent: Math.round((cancelledCount / totalApts) * 100), color: '#EF4444' },
+  ];
+
+  const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  const appointmentsPerDayData = dayLabels.map((label, idx) => {
+    const val = appointments.filter((a) => {
+      const d = new Date(a.date);
+      return !isNaN(d) && ((d.getDay() + 6) % 7) === idx;
+    }).length;
+    return { label, value: val };
+  });
+
+  const appointmentsPerWeekData = ['Week 1', 'Week 2', 'Week 3', 'Week 4'].map((label, idx) => {
+    const val = appointments.filter((a) => {
+      const d = new Date(a.date);
+      return !isNaN(d) && Math.min(3, Math.floor((d.getDate() - 1) / 7)) === idx;
+    }).length;
+    return { label, value: val };
   });
 
   const calendarDays = Array.from({ length: 30 }, (_, i) => {

@@ -1,21 +1,15 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import {
-  initialStats,
   patientDemographicsData,
   admissionsBarData,
-  initialPatients,
-  initialDoctors,
-  initialAppointments,
   initialDepartments,
   hospitalTreatments,
   hospitalFacilities,
   treatmentCharges,
-  initialStaff,
   initialRolesPermissions,
   staffDistributionData,
   attendanceBarData,
   initialAttendance,
-  initialBills,
   initialPaymentRecords,
   initialRefundRecords,
   initialMedicines,
@@ -23,6 +17,7 @@ import {
   initialPurchaseRecords,
   userProfileData,
 } from '../data/mockData';
+import { api } from '../api/api';
 import { getAuthToken, setAuthToken, clearAuthToken } from '../api/client';
 import {
   authApi,
@@ -96,21 +91,33 @@ export const HospitalProvider = ({ children }) => {
     if (menuId === 'settings' && subTabId) setSettingsSubTab(subTabId);
   };
 
-  // Core Data
-  const [stats, setStats] = useState(initialStats);
+  // Core Data (loaded from real backend APIs via api.js)
+  const [stats, setStats] = useState({
+    totalPatients: 0,
+    totalDoctors: 0,
+    appointments: 0,
+    totalBills: 0,
+    revenue: 0,
+    appointmentsPending: 0,
+    appointmentsCompleted: 0,
+    appointmentsCancelled: 0,
+    admissionsTotal: 0,
+    bedsAvailable: 0,
+    totalBeds: 0,
+  });
   const [demographicsData, setDemographicsData] = useState(patientDemographicsData);
   const [admissionsChartData, setAdmissionsChartData] = useState(admissionsBarData);
-  const [patients, setPatients] = useState(initialPatients);
-  const [doctors, setDoctors] = useState(initialDoctors);
-  const [appointments, setAppointments] = useState(initialAppointments);
+  const [patients, setPatients] = useState([]);
+  const [doctors, setDoctors] = useState([]);
+  const [appointments, setAppointments] = useState([]);
   const [departments, setDepartments] = useState(initialDepartments);
   const [treatments, setTreatments] = useState(hospitalTreatments);
   const [facilities, setFacilities] = useState(hospitalFacilities);
   const [charges, setCharges] = useState(treatmentCharges);
-  const [staffList, setStaffList] = useState(initialStaff);
+  const [staffList, setStaffList] = useState([]);
   const [rolesPermissions, setRolesPermissions] = useState(initialRolesPermissions);
   const [attendance, setAttendance] = useState(initialAttendance);
-  const [bills, setBills] = useState(initialBills);
+  const [bills, setBills] = useState([]);
   const [payments, setPayments] = useState(initialPaymentRecords);
   const [refunds] = useState(initialRefundRecords);
   const [medicines, setMedicines] = useState(initialMedicines);
@@ -143,7 +150,6 @@ export const HospitalProvider = ({ children }) => {
 
   // Load all live data from backend APIs
   const loadAllData = useCallback(async () => {
-    if (!getAuthToken()) return;
     setDataLoading(true);
     try {
       const [
@@ -165,18 +171,18 @@ export const HospitalProvider = ({ children }) => {
         poRes,
         profileRes,
       ] = await Promise.allSettled([
-        dashboardApi.getOverview(),
-        patientsApi.getAll('?viewAll=true'),
-        doctorsApi.getAll('?limit=100'),
-        appointmentsApi.getAll('?limit=100'),
+        api.getOverview(),
+        api.getPatients(),
+        api.getDoctors(),
+        api.getAppointments(),
         servicesApi.getDepartments(),
         servicesApi.getTreatments(),
         servicesApi.getFacilities(),
         servicesApi.getTariffs(),
-        staffApi.getAll(),
+        api.getStaff(),
         staffApi.getRoles(),
         staffApi.getAttendance(),
-        billingApi.getInvoices('?limit=100'),
+        api.getBills(),
         billingApi.getPayments(),
         inventoryApi.getMedicines(),
         inventoryApi.getEquipment(),
@@ -184,44 +190,83 @@ export const HospitalProvider = ({ children }) => {
         settingsApi.getProfile(),
       ]);
 
-      if (overviewRes.status === 'fulfilled' && overviewRes.value?.data) {
-        const ov = overviewRes.value.data;
-        setStats((prev) => ({
-          ...prev,
-          totalPatients: ov.kpis?.totalPatients ?? prev.totalPatients,
-          totalDoctors: ov.kpis?.totalDoctors ?? prev.totalDoctors,
-          appointments: ov.kpis?.totalAppointments ?? prev.appointments,
-          revenue: ov.kpis?.totalRevenue ?? prev.revenue,
-          appointmentsPending: ov.kpis?.appointmentsPending ?? prev.appointmentsPending,
-          appointmentsCompleted: ov.kpis?.appointmentsDone ?? prev.appointmentsCompleted,
-          admissionsTotal: ov.kpis?.currentlyAdmitted ?? prev.admissionsTotal,
-        }));
-        if (Array.isArray(ov.demographics?.groups) && ov.demographics.groups.length > 0) {
-          const colors = ['#00C2FF', '#0E86D4', '#1E3A8A', '#38BDF8'];
-          setDemographicsData(
-            ov.demographics.groups.map((g, idx) => ({
-              group: g.label,
-              count: g.value,
-              percent: g.percentage,
-              color: colors[idx % colors.length],
-            }))
-          );
-        }
-        if (Array.isArray(ov.admissionsVsDischarges) && ov.admissionsVsDischarges.length > 0) {
-          setAdmissionsChartData(ov.admissionsVsDischarges);
+      let loadedPatients = [];
+      if (patientsRes.status === 'fulfilled') {
+        const list = patientsRes.value?.patients || patientsRes.value?.data || [];
+        if (Array.isArray(list)) {
+          loadedPatients = list.map(mapPatientFromApi);
+          setPatients(loadedPatients);
         }
       }
 
-      if (patientsRes.status === 'fulfilled' && Array.isArray(patientsRes.value?.patients)) {
-        setPatients(patientsRes.value.patients.map(mapPatientFromApi));
+      let loadedDoctors = [];
+      if (doctorsRes.status === 'fulfilled') {
+        const list = doctorsRes.value?.doctors || doctorsRes.value?.data || [];
+        if (Array.isArray(list)) {
+          loadedDoctors = list.map(mapDoctorFromApi);
+          setDoctors(loadedDoctors);
+        }
       }
 
-      if (doctorsRes.status === 'fulfilled' && Array.isArray(doctorsRes.value?.doctors)) {
-        setDoctors(doctorsRes.value.doctors.map(mapDoctorFromApi));
+      let loadedAppointments = [];
+      if (appointmentsRes.status === 'fulfilled') {
+        const list = appointmentsRes.value?.appointments || appointmentsRes.value?.data || [];
+        if (Array.isArray(list)) {
+          loadedAppointments = list.map(mapAppointmentFromApi);
+          setAppointments(loadedAppointments);
+        }
       }
 
-      if (appointmentsRes.status === 'fulfilled' && Array.isArray(appointmentsRes.value?.appointments)) {
-        setAppointments(appointmentsRes.value.appointments.map(mapAppointmentFromApi));
+      let loadedStaff = [];
+      if (staffRes.status === 'fulfilled') {
+        const list = staffRes.value?.staff || staffRes.value?.data || [];
+        if (Array.isArray(list)) {
+          loadedStaff = list.map(mapStaffFromApi);
+          setStaffList(loadedStaff);
+        }
+      }
+
+      let loadedBills = [];
+      if (invoicesRes.status === 'fulfilled') {
+        const list = invoicesRes.value?.bills || invoicesRes.value?.invoices || invoicesRes.value?.data || [];
+        if (Array.isArray(list)) {
+          loadedBills = list.map(mapInvoiceFromApi);
+          setBills(loadedBills);
+        }
+      }
+
+      const ov = overviewRes.status === 'fulfilled' ? (overviewRes.value?.data || overviewRes.value) : null;
+      const kpis = ov?.kpis || ov;
+      const calculatedRevenue = loadedBills.reduce((sum, b) => sum + (b.paid || b.amount || 0), 0);
+
+      setStats((prev) => ({
+        ...prev,
+        totalPatients: kpis?.totalPatients ?? loadedPatients.length,
+        totalDoctors: kpis?.totalDoctors ?? loadedDoctors.length,
+        appointments: kpis?.totalAppointments ?? loadedAppointments.length,
+        totalBills: kpis?.totalBills ?? loadedBills.length,
+        revenue: kpis?.totalRevenue ?? calculatedRevenue,
+        appointmentsPending:
+          kpis?.appointmentsPending ?? loadedAppointments.filter((a) => a.status === 'Pending').length,
+        appointmentsCompleted:
+          kpis?.appointmentsDone ?? loadedAppointments.filter((a) => a.status === 'Completed').length,
+        admissionsTotal:
+          kpis?.currentlyAdmitted ?? loadedPatients.filter((p) => p.status === 'Admitted').length,
+      }));
+
+      if (ov && Array.isArray(ov.demographics?.groups) && ov.demographics.groups.length > 0) {
+        const colors = ['#00C2FF', '#0E86D4', '#1E3A8A', '#38BDF8'];
+        setDemographicsData(
+          ov.demographics.groups.map((g, idx) => ({
+            group: g.label,
+            count: g.value,
+            percent: g.percentage,
+            color: colors[idx % colors.length],
+          }))
+        );
+      }
+      if (ov && Array.isArray(ov.admissionsVsDischarges) && ov.admissionsVsDischarges.length > 0) {
+        setAdmissionsChartData(ov.admissionsVsDischarges);
       }
 
       if (deptsRes.status === 'fulfilled') {
@@ -288,13 +333,6 @@ export const HospitalProvider = ({ children }) => {
         }
       }
 
-      if (staffRes.status === 'fulfilled') {
-        const list = staffRes.value?.staff || staffRes.value?.data;
-        if (Array.isArray(list) && list.length > 0) {
-          setStaffList(list.map(mapStaffFromApi));
-        }
-      }
-
       if (rolesRes.status === 'fulfilled') {
         const list = rolesRes.value?.roles || rolesRes.value?.data;
         if (Array.isArray(list) && list.length > 0) {
@@ -328,13 +366,6 @@ export const HospitalProvider = ({ children }) => {
               status: a.status || 'Present',
             }))
           );
-        }
-      }
-
-      if (invoicesRes.status === 'fulfilled') {
-        const list = invoicesRes.value?.invoices || invoicesRes.value?.data;
-        if (Array.isArray(list)) {
-          setBills(list.map(mapInvoiceFromApi));
         }
       }
 
@@ -467,60 +498,40 @@ export const HospitalProvider = ({ children }) => {
   const enterDemoMode = () => {
     setIsDemoMode(true);
     setIsAuthenticated(false);
-    showToast('Running in Offline Demo Mode (mock data).', 'info');
+    loadAllData();
+    showToast('Connected to hospital API.', 'info');
   };
 
   // Actions: Patients
   const addPatient = async (newPatientData) => {
-    if (isAuthenticated) {
-      try {
-        const res = await patientsApi.create({
-          name: newPatientData.name,
-          age: Number(newPatientData.age) || 30,
-          gender: newPatientData.gender || 'Male',
-          phone: newPatientData.phone,
-          email: newPatientData.email,
-          bloodGroup: newPatientData.bloodGroup || 'O+',
-          department: newPatientData.department || 'General Medicine',
-          diagnosis: newPatientData.diagnosis,
-          room: newPatientData.room,
-          address: newPatientData.address,
-          emergencyContact: newPatientData.emergencyContact,
-          status: 'Admitted',
-        });
-        const created = mapPatientFromApi(res.patient || res.data || res);
-        setPatients((prev) => [created, ...prev]);
-        setStats((prev) => ({
-          ...prev,
-          totalPatients: prev.totalPatients + 1,
-          admissionsTotal: prev.admissionsTotal + 1,
-        }));
-        showToast(`Patient ${created.name} (${created.id}) admitted successfully!`);
-        setIsAddPatientModalOpen(false);
-        return;
-      } catch (err) {
-        showToast(err.message || 'Failed to admit patient', 'error');
-        return;
-      }
+    try {
+      const res = await api.registerPatient({
+        name: newPatientData.name,
+        age: Number(newPatientData.age) || 30,
+        gender: newPatientData.gender || 'Male',
+        phone: newPatientData.phone,
+        email: newPatientData.email,
+        bloodGroup: newPatientData.bloodGroup || 'O+',
+        department: newPatientData.department || 'General Medicine',
+        doctor: newPatientData.doctor || 'Dr. Amina Bello',
+        diagnosis: newPatientData.diagnosis,
+        room: newPatientData.room,
+        address: newPatientData.address,
+        emergencyContact: newPatientData.emergencyContact,
+        status: 'Admitted',
+      });
+      const created = mapPatientFromApi(res.patient || res.data || res);
+      setPatients((prev) => [created, ...prev]);
+      setStats((prev) => ({
+        ...prev,
+        totalPatients: prev.totalPatients + 1,
+        admissionsTotal: prev.admissionsTotal + 1,
+      }));
+      showToast(`Patient ${created.name} (${created.id}) admitted successfully!`);
+      setIsAddPatientModalOpen(false);
+    } catch (err) {
+      showToast(err.message || 'Failed to admit patient', 'error');
     }
-
-    const newId = `PAT-${1000 + patients.length + 1}`;
-    const patientObj = {
-      id: newId,
-      ...newPatientData,
-      status: 'Admitted',
-      admissionDate: new Date().toISOString().split('T')[0],
-      vitals: newPatientData.vitals || { bp: '120/80 mmHg', pulse: '72 bpm', temp: '36.8 °C', spo2: '99%', weight: '70 kg' },
-      prescriptions: newPatientData.prescriptions || [{ name: 'Paracetamol 500mg', dosage: '1 tab 8-hourly', duration: '3 days' }],
-    };
-    setPatients([patientObj, ...patients]);
-    setStats((prev) => ({
-      ...prev,
-      totalPatients: prev.totalPatients + 1,
-      admissionsTotal: prev.admissionsTotal + 1,
-    }));
-    showToast(`Patient ${patientObj.name} (${newId}) admitted successfully!`);
-    setIsAddPatientModalOpen(false);
   };
 
   const dischargePatient = async (patientId) => {
@@ -568,59 +579,26 @@ export const HospitalProvider = ({ children }) => {
 
   // Actions: Doctors
   const addDoctor = async (doctorData) => {
-    if (isAuthenticated) {
-      try {
-        const res = await doctorsApi.create({
-          name: doctorData.name,
-          email: doctorData.email,
-          phone: doctorData.phone,
-          specialization: doctorData.specialization,
-          department: doctorData.department,
-          qualifications: doctorData.qualifications || 'MBBS, MD',
-          experienceYears: parseInt(doctorData.experience, 10) || 5,
-          consultationFee: Number(doctorData.fee) || 500,
-          status: 'On Duty',
-        });
-        const created = mapDoctorFromApi(res.doctor || res.data || res);
-        setDoctors((prev) => [...prev, created]);
-        setStats((prev) => ({ ...prev, totalDoctors: prev.totalDoctors + 1 }));
-        showToast(`Dr. ${created.name} registered successfully!`);
-        setIsAddDoctorModalOpen(false);
-        return;
-      } catch (err) {
-        showToast(err.message || 'Failed to register doctor', 'error');
-        return;
-      }
+    try {
+      const res = await api.addDoctor({
+        name: doctorData.name,
+        email: doctorData.email,
+        phone: doctorData.phone,
+        specialization: doctorData.specialization,
+        department: doctorData.department,
+        qualifications: doctorData.qualifications || doctorData.qualification || 'MBBS, MD',
+        experienceYears: parseInt(doctorData.experience, 10) || 5,
+        consultationFee: Number(doctorData.consultationFee || doctorData.fee) || 20000,
+        status: 'On Duty',
+      });
+      const created = mapDoctorFromApi(res.doctor || res.data || res);
+      setDoctors((prev) => [...prev, created]);
+      setStats((prev) => ({ ...prev, totalDoctors: prev.totalDoctors + 1 }));
+      showToast(`Dr. ${created.name} registered successfully!`);
+      setIsAddDoctorModalOpen(false);
+    } catch (err) {
+      showToast(err.message || 'Failed to register doctor', 'error');
     }
-
-    const newId = `DOC-0${doctors.length + 1}`;
-    const doctorObj = {
-      id: newId,
-      rating: 5.0,
-      status: 'On Duty',
-      avatar: 'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=150&auto=format&fit=crop&q=80',
-      schedule: {
-        Monday: '08:00 - 16:00',
-        Tuesday: '08:00 - 16:00',
-        Wednesday: '08:00 - 16:00',
-        Thursday: '08:00 - 16:00',
-        Friday: '08:00 - 14:00',
-        Saturday: 'On Call',
-        Sunday: 'Off Duty',
-      },
-      loginAccess: {
-        username: `doc.${doctorData.name.toLowerCase().replace(/[^a-z]/g, '')}`,
-        role: doctorData.specialization || 'Consultant',
-        twoFactor: true,
-        lastLogin: 'Never',
-        active: true,
-      },
-      ...doctorData,
-    };
-    setDoctors([...doctors, doctorObj]);
-    setStats((prev) => ({ ...prev, totalDoctors: prev.totalDoctors + 1 }));
-    showToast(`Dr. ${doctorData.name} registered successfully!`);
-    setIsAddDoctorModalOpen(false);
   };
 
   const toggleDoctorDuty = async (doctorId) => {
@@ -658,61 +636,39 @@ export const HospitalProvider = ({ children }) => {
 
   // Actions: Appointments
   const bookAppointment = async (appointmentData) => {
-    if (isAuthenticated) {
-      try {
-        const matchedDoctor = doctors.find((d) => d.name === appointmentData.doctor);
-        const res = await appointmentsApi.book({
-          patientFullName: appointmentData.patientName,
-          patientAge: Number(appointmentData.patientAge) || 30,
-          contactPhoneNumber: appointmentData.patientPhone,
-          consultingPhysician: appointmentData.doctor,
-          doctorId: matchedDoctor?._id,
-          department: appointmentData.department,
-          appointmentDate: appointmentData.date || new Date().toISOString().split('T')[0],
-          timeSlot: appointmentData.time || '10:00 AM',
-          reason: appointmentData.reason || 'Routine Medical Checkup',
-          appointmentType: appointmentData.type || 'Consultation',
-          priority: appointmentData.priority || 'Normal',
-        });
-        const created = mapAppointmentFromApi(res.appointment || res.data || res);
-        setAppointments((prev) => [created, ...prev]);
-        setStats((prev) => ({
-          ...prev,
-          appointments: prev.appointments + 1,
-          appointmentsPending: prev.appointmentsPending + 1,
-        }));
-        showToast(`Appointment ${created.id} booked for ${created.patientName}!`);
-        setIsBookAppointmentModalOpen(false);
-        return;
-      } catch (err) {
-        showToast(err.message || 'Failed to book appointment', 'error');
-        return;
-      }
+    try {
+      const matchedDoctor = doctors.find((d) => d.name === appointmentData.doctor);
+      const res = await api.bookAppointment({
+        patientName: appointmentData.patientName,
+        patientFullName: appointmentData.patientName,
+        patientAge: Number(appointmentData.patientAge) || 30,
+        patientPhone: appointmentData.patientPhone,
+        contactPhoneNumber: appointmentData.patientPhone,
+        doctor: appointmentData.doctor,
+        consultingPhysician: appointmentData.doctor,
+        doctorId: matchedDoctor?._id,
+        department: appointmentData.department,
+        date: appointmentData.date || new Date().toISOString().split('T')[0],
+        appointmentDate: appointmentData.date || new Date().toISOString().split('T')[0],
+        time: appointmentData.time || '10:00 AM',
+        timeSlot: appointmentData.time || '10:00 AM',
+        reason: appointmentData.reason || 'Routine Medical Checkup',
+        type: appointmentData.type || 'Consultation',
+        appointmentType: appointmentData.type || 'Consultation',
+        priority: appointmentData.priority || 'Normal',
+      });
+      const created = mapAppointmentFromApi(res.appointment || res.data || res);
+      setAppointments((prev) => [created, ...prev]);
+      setStats((prev) => ({
+        ...prev,
+        appointments: prev.appointments + 1,
+        appointmentsPending: prev.appointmentsPending + 1,
+      }));
+      showToast(`Appointment ${created.id} booked for ${created.patientName}!`);
+      setIsBookAppointmentModalOpen(false);
+    } catch (err) {
+      showToast(err.message || 'Failed to book appointment', 'error');
     }
-
-    const newId = `APT-0${200 + appointments.length + 1}`;
-    const newApt = {
-      id: newId,
-      date: appointmentData.date || new Date().toISOString().split('T')[0],
-      time: appointmentData.time || '10:00 AM',
-      patientName: appointmentData.patientName,
-      patientAge: appointmentData.patientAge || 30,
-      patientPhone: appointmentData.patientPhone || '+234 800 000 0000',
-      doctor: appointmentData.doctor,
-      department: appointmentData.department,
-      reason: appointmentData.reason || 'Routine Medical Checkup',
-      type: appointmentData.type || 'Consultation',
-      priority: appointmentData.priority || 'Normal',
-      status: 'Pending',
-    };
-    setAppointments([newApt, ...appointments]);
-    setStats((prev) => ({
-      ...prev,
-      appointments: prev.appointments + 1,
-      appointmentsPending: prev.appointmentsPending + 1,
-    }));
-    showToast(`Appointment ${newId} booked for ${newApt.patientName}!`);
-    setIsBookAppointmentModalOpen(false);
   };
 
   const updateAppointmentStatus = async (aptId, newStatus) => {
@@ -733,30 +689,15 @@ export const HospitalProvider = ({ children }) => {
 
   // Actions: Staff
   const addStaff = async (staffData) => {
-    if (isAuthenticated) {
-      try {
-        const res = await staffApi.create(staffData);
-        const created = mapStaffFromApi(res.staff || res.data || res);
-        setStaffList((prev) => [...prev, created]);
-        showToast(`${created.name} added to hospital staff.`);
-        setIsAddStaffModalOpen(false);
-        return;
-      } catch (err) {
-        showToast(err.message || 'Failed to add staff member', 'error');
-        return;
-      }
+    try {
+      const res = await api.addStaff(staffData);
+      const created = mapStaffFromApi(res.staff || res.data || res);
+      setStaffList((prev) => [...prev, created]);
+      showToast(`${created.name} added to hospital staff.`);
+      setIsAddStaffModalOpen(false);
+    } catch (err) {
+      showToast(err.message || 'Failed to add staff member', 'error');
     }
-
-    const newId = `STF-0${staffList.length + 1}`;
-    const newStaffMember = {
-      id: newId,
-      joinDate: new Date().toISOString().split('T')[0],
-      status: 'Active',
-      ...staffData,
-    };
-    setStaffList([...staffList, newStaffMember]);
-    showToast(`${newStaffMember.name} added to hospital staff.`);
-    setIsAddStaffModalOpen(false);
   };
 
   const togglePermission = async (roleName, permissionKey) => {
@@ -782,68 +723,40 @@ export const HospitalProvider = ({ children }) => {
     const totalWithVat = calculatedAmount + vat;
     const paidAmount = billData.isPaidDirectly ? totalWithVat : 0;
 
-    if (isAuthenticated) {
-      try {
-        const res = await billingApi.createBill({
-          patientId: billData.patientId,
-          patientName: billData.patientName,
-          items: billData.items.map((i) => ({
-            description: i.name,
-            quantity: i.qty,
-            unitPrice: i.rate,
-            total: i.qty * i.rate,
-          })),
-          subtotal: calculatedAmount,
-          tax: vat,
-          totalAmount: totalWithVat,
-          paidAmount,
-          paymentStatus: paidAmount >= totalWithVat ? 'Paid' : 'Pending',
-          paymentMethod: billData.method || 'Card',
-        });
-        const created = mapInvoiceFromApi(res.invoice || res.data || res);
-        setBills((prev) => [created, ...prev]);
-        setStats((prev) => ({ ...prev, revenue: prev.revenue + paidAmount }));
-        showToast(`Invoice ${created.invoiceNo} generated for ₦${totalWithVat.toLocaleString()}`);
-        setIsCreateBillModalOpen(false);
-        return;
-      } catch (err) {
-        showToast(err.message || 'Failed to create invoice', 'error');
-        return;
-      }
-    }
-
-    const invoiceNo = `INV-2024-0${840 + bills.length + 1}`;
-    const dueAmount = totalWithVat - paidAmount;
-    const newBill = {
-      invoiceNo,
-      patientId: billData.patientId || 'PAT-1001',
-      patientName: billData.patientName,
-      date: new Date().toISOString().split('T')[0],
-      services: billData.items.map((i) => i.name).join(', '),
-      amount: totalWithVat,
-      paid: paidAmount,
-      due: dueAmount,
-      status: dueAmount === 0 ? 'Paid' : paidAmount > 0 ? 'Partial' : 'Unpaid',
-      method: billData.method || 'POS Card Payment',
-      items: billData.items,
-    };
-    setBills([newBill, ...bills]);
-    setStats((prev) => ({ ...prev, revenue: prev.revenue + paidAmount }));
-    if (paidAmount > 0) {
-      const newPayment = {
-        ref: `TXN-${Math.floor(100000 + Math.random() * 900000)}`,
-        invoiceNo,
-        patient: billData.patientName,
-        date: new Date().toISOString().replace('T', ' ').substring(0, 16),
+    try {
+      const res = await api.createBill({
+        patientId: billData.patientId,
+        patientName: billData.patientName,
+        items: billData.items.map((i) => ({
+          name: i.name,
+          description: i.name,
+          qty: i.qty,
+          quantity: i.qty,
+          rate: i.rate,
+          unitPrice: i.rate,
+          total: i.qty * i.rate,
+        })),
+        subtotal: calculatedAmount,
+        tax: vat,
+        totalAmount: totalWithVat,
+        paidAmount,
+        isPaidDirectly: billData.isPaidDirectly,
+        paymentStatus: paidAmount >= totalWithVat ? 'Paid' : 'Pending',
         method: billData.method || 'POS Card Payment',
-        amount: paidAmount,
-        cashier: userProfile.name,
-        status: 'Verified',
-      };
-      setPayments([newPayment, ...payments]);
+        paymentMethod: billData.method || 'POS Card Payment',
+      });
+      const created = mapInvoiceFromApi(res.bill || res.invoice || res.data || res);
+      setBills((prev) => [created, ...prev]);
+      setStats((prev) => ({
+        ...prev,
+        totalBills: (prev.totalBills || 0) + 1,
+        revenue: prev.revenue + paidAmount,
+      }));
+      showToast(`Invoice ${created.invoiceNo} generated for ₦${totalWithVat.toLocaleString()}`);
+      setIsCreateBillModalOpen(false);
+    } catch (err) {
+      showToast(err.message || 'Failed to create invoice', 'error');
     }
-    showToast(`Invoice ${invoiceNo} generated for ₦${totalWithVat.toLocaleString()}`);
-    setIsCreateBillModalOpen(false);
   };
 
   const markBillPaid = async (invoiceNo) => {

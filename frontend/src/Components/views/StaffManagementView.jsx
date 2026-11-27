@@ -17,10 +17,6 @@ import {
 import { useHospital } from '../../context/HospitalContext';
 import { PieChartWidget } from '../charts/PieChartWidget';
 import { AttendanceBarChart } from '../charts/AttendanceBarChart';
-import {
-  staffByRolePieData,
-  attendanceBarData
-} from '../../data/mockData';
 
 export const StaffManagementView = () => {
   const {
@@ -64,6 +60,27 @@ export const StaffManagementView = () => {
     s.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
     s.department.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  // Dynamic chart datasets derived from real API staff & attendance
+  const staffColors = ['#00C2FF', '#0A1030', '#0E86D4', '#38BDF8', '#1E3A8A'];
+  const roleCounts = staffList.reduce((acc, s) => {
+    const role = s.role || 'Staff';
+    acc[role] = (acc[role] || 0) + 1;
+    return acc;
+  }, {});
+  const totalStf = staffList.length || 1;
+  const staffByRolePieData = Object.entries(roleCounts).map(([label, count], idx) => ({
+    label,
+    count,
+    percent: Math.round((count / totalStf) * 100),
+    color: staffColors[idx % staffColors.length],
+  }));
+
+  const attendanceBarData = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => ({
+    day,
+    present: attendance.filter((a) => a.status === 'Present').length,
+    absent: attendance.filter((a) => a.status !== 'Present').length,
+  }));
 
   return (
     <div className="view-container staff-view">

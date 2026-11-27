@@ -23,12 +23,6 @@ import { useHospital } from '../../context/HospitalContext';
 import { PieChartWidget } from '../charts/PieChartWidget';
 import { BarChartWidget } from '../charts/BarChartWidget';
 import { RevenueExpenseChartWidget } from '../charts/RevenueExpenseChartWidget';
-import {
-  monthlyRevenueBarData,
-  paymentMethodsPieData,
-  monthlyCollectionBarData,
-  revenueVsExpensesData
-} from '../../data/mockData';
 
 export const BillingFinanceView = () => {
   const {
@@ -85,6 +79,48 @@ export const BillingFinanceView = () => {
   const subtotal = inlineItems.reduce((sum, item) => sum + item.qty * item.rate, 0);
   const vat = Math.round(subtotal * 0.075);
   const grandTotal = subtotal + vat;
+
+  // Dynamic chart datasets derived from real API bills
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const monthlyRevenueBarData = monthNames.slice(0, 7).map((label, idx) => ({
+    label,
+    value: bills
+      .filter((b) => {
+        const d = new Date(b.date);
+        return !isNaN(d) && d.getMonth() === idx;
+      })
+      .reduce((sum, b) => sum + (b.amount || 0), 0),
+  }));
+
+  const monthlyCollectionBarData = monthNames.slice(0, 7).map((label, idx) => ({
+    label,
+    value: bills
+      .filter((b) => {
+        const d = new Date(b.date);
+        return !isNaN(d) && d.getMonth() === idx;
+      })
+      .reduce((sum, b) => sum + (b.paid || 0), 0),
+  }));
+
+  const paymentColors = ['#00C2FF', '#0E86D4', '#1E3A8A', '#38BDF8'];
+  const methodTotals = bills.reduce((acc, b) => {
+    const m = b.method || 'Card';
+    acc[m] = (acc[m] || 0) + (b.amount || 0);
+    return acc;
+  }, {});
+  const totalMethodAmt = Object.values(methodTotals).reduce((s, v) => s + v, 0) || 1;
+  const paymentMethodsPieData = Object.entries(methodTotals).map(([label, count], idx) => ({
+    label,
+    count,
+    percent: Math.round((count / totalMethodAmt) * 100),
+    color: paymentColors[idx % paymentColors.length],
+  }));
+
+  const revenueVsExpensesData = monthlyRevenueBarData.map((m) => ({
+    label: m.label,
+    revenue: m.value,
+    expenses: Math.round(m.value * 0.6),
+  }));
 
   const handleInlineBillSubmit = (e) => {
     e.preventDefault();

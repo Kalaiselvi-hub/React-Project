@@ -19,14 +19,11 @@ import {
 import { useHospital } from '../../context/HospitalContext';
 import { PieChartWidget } from '../charts/PieChartWidget';
 import { BarChartWidget } from '../charts/BarChartWidget';
-import {
-  doctorsByDepartmentData,
-  patientsPerDepartmentBarData
-} from '../../data/mockData';
 
 export const DoctorsView = () => {
   const {
     doctors,
+    patients,
     doctorsSubTab,
     navigateTo,
     departments,
@@ -76,6 +73,31 @@ export const DoctorsView = () => {
     if (selectedDeptFilter === 'All') return true;
     return doc.department.toLowerCase().includes(selectedDeptFilter.toLowerCase());
   });
+
+  // Dynamic chart datasets derived from real API doctors & patients
+  const docColors = ['#00C2FF', '#0E86D4', '#1E3A8A', '#38BDF8', '#0077B6', '#0A1030'];
+  const docDeptCounts = doctors.reduce((acc, d) => {
+    const dept = d.department || 'General Medicine';
+    acc[dept] = (acc[dept] || 0) + 1;
+    return acc;
+  }, {});
+  const totalDocs = doctors.length || 1;
+  const doctorsByDepartmentData = Object.entries(docDeptCounts).map(([label, count], idx) => ({
+    label,
+    count,
+    percent: Math.round((count / totalDocs) * 100),
+    color: docColors[idx % docColors.length],
+  }));
+
+  const patDeptCounts = (patients || []).reduce((acc, p) => {
+    const dept = p.department || 'General';
+    acc[dept] = (acc[dept] || 0) + 1;
+    return acc;
+  }, {});
+  const patientsPerDepartmentBarData = Object.entries(patDeptCounts).map(([label, value]) => ({
+    label: label.slice(0, 8),
+    value,
+  }));
 
   return (
     <div className="view-container doctors-view">
